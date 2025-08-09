@@ -51,9 +51,15 @@ async function getEstimate(params) {
       destToken,
       destChainId: destChainId || srcChainId, // Same chain if not specified
       slippageBps,
-      ...(userAccount && { userAccount }),
-      ...(destReceiver && { destReceiver }),
     };
+
+    // Only add optional parameters if they are provided
+    if (userAccount) {
+      requestBody.userAccount = userAccount;
+    }
+    if (destReceiver) {
+      requestBody.destReceiver = destReceiver;
+    }
 
     log.info('GUD estimate request:', requestBody);
 
