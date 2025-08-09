@@ -1,27 +1,65 @@
-# template-bot
+## Zircuit Telegraf Bot
 
-🚀 Kick-start a Telegram bot with `Telegraf`
+Telegram bot using Telegraf + Ethers with GUD Trading Engine integration.
 
-Based on [template-micro-service](https://github.com/tiaanduplessis/template-micro-service).
+### Getting Started
 
-## Features
+1. Clone this repo
+2. Install dependencies:
 
-- Build with [telegraf](https://github.com/telegraf/telegraf)
-- Lint with [standard](https://github.com/feross/standard)
-- README with instant [now](https://zeit.co/now) deployment buttons
-
-## Usage
-
-Install [SAO](https://github.com/egoist/sao) first.
-
-### From git
-
-```sh
-$ sao telegraf/template-bot
+```bash
+npm install
 ```
 
-### From npm
+3. Create `.env` from `.env.example` and fill values:
 
-```sh
-$ sao bot
 ```
+BOT_TOKEN=123456:abcdef...
+RPC_URL=https://your.rpc.url
+GUD_API_KEY=your_gud_api_key
+RELAYER_PRIVATE_KEY=optional_0x_private_key
+```
+
+- `BOT_TOKEN`: Telegram bot token from BotFather
+- `RPC_URL`: EVM RPC URL
+- `GUD_API_KEY`: API key for GUD Trading Engine
+- `RELAYER_PRIVATE_KEY` (optional): If provided, a relayer wallet will be initialized to send transactions
+
+4. Start the bot:
+
+```bash
+npm start
+```
+
+### Commands
+
+- `/swap`: Shows an inline keyboard to pick a swap pair (ETH ↔ USDC).
+  - After you select a pair, the bot calls GUD Trading Engine `/order/estimate`.
+  - The bot replies with the estimated destination amount and deadline if provided.
+
+### Customize
+
+- Token pairs can be adjusted in `src/commands/swap.js` (`TOKENS` map and keyboard).
+- GUD Engine client: `src/services/gudEngine.js`
+- Zircuit SDK stub: `src/services/zircuit.js` (contains `sendTx` using ethers Wallet if `RELAYER_PRIVATE_KEY` is set)
+- EVM provider and wallet are initialized in `src/services/zircuit.js` using `RPC_URL` and `RELAYER_PRIVATE_KEY`.
+
+### Project Structure
+
+```
+src/
+  bot.js
+  config.js
+  logger.js
+  commands/
+    swap.js
+  services/
+    gudEngine.js
+    zircuit.js
+.env.example
+```
+
+### Notes
+
+- Telegraf framework docs: [telegraf/telegraf on GitHub](https://github.com/telegraf/telegraf.git)
+- This is a minimal example. Integrate additional chains/tokens and full swap flows as needed. 

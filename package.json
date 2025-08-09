@@ -1,35 +1,25 @@
 {
-  "name": "template-bot",
-  "version": "1.2.0",
-  "description": "Scaffolding out a Telegram bot",
-  "author": "Vitaly Domnikov <oss@gvitaly.codes>",
-  "license": "MIT",
-  "main": "index.js",
-  "repository": {
-    "url": "git+ssh://git@github.com/telegraf/template-bot.git",
-    "type": "git"
-  },
+  "name": "zircuit-bot",
+  "version": "1.0.0",
+  "description": "Telegram bot using Telegraf + Ethers with GUD Trading Engine integration",
+  "main": "src/bot.js",
+  "type": "commonjs",
   "scripts": {
-    "test": "eslint ."
+    "start": "node src/bot.js"
   },
-  "engines": {
-    "node": ">=8.5.0"
-  },
-  "files": [
-    "sao.js",
+  "keywords": [
+    "telegraf",
     "telegram",
-    "template"
+    "ethers",
+    "zircuit",
+    "gud"
   ],
+  "author": "",
+  "license": "MIT",
   "dependencies": {
-    "camelcase": "^5.0.0",
-    "superb": "^4.0.0"
-  },
-  "devDependencies": {
-    "eslint": "^6.7.1",
-    "eslint-config-standard": "^14.1.0",
-    "eslint-plugin-import": "^2.18.2",
-    "eslint-plugin-node": "^10.0.0",
-    "eslint-plugin-promise": "^4.0.1",
-    "eslint-plugin-standard": "^4.0.0"
+    "axios": "^1.7.7",
+    "dotenv": "^16.4.5",
+    "ethers": "^6.13.4",
+    "telegraf": "^4.16.3"
   }
 }
