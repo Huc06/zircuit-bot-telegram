@@ -1,14 +1,16 @@
 # Zircuit Telegraf Bot
 
-Telegram bot using Telegraf + Ethers with GUD Trading Engine integration for multi-chain swaps.
+Telegram bot using Telegraf + Ethers with GUD Trading Engine integration for multi-chain swaps on both Mainnet and Testnet.
 
 ## Features
 
 - **Multi-chain Support**: Ethereum, Base, Optimism, Arbitrum, Zircuit, and testnets
+- **Dual Network Support**: Both Mainnet and Testnet networks
 - **GUD Trading Engine Integration**: Get swap estimates across different chains
-- **Interactive Swap Interface**: Inline keyboard for selecting swap pairs
+- **Interactive Swap Interface**: Hierarchical inline keyboard for network and pair selection
 - **EVM Integration**: Support for multiple chains with ethers.js
 - **Optional Transaction Execution**: Send transactions if `RELAYER_PRIVATE_KEY` is configured
+- **Testnet Testing**: Safe environment for testing swap functionality
 
 ## Getting Started
 
@@ -56,20 +58,34 @@ npm start
 ## Commands
 
 ### `/swap` - Multi-chain Swap Estimates
-Shows an inline keyboard with swap pairs across different chains:
+The bot now provides a hierarchical interface:
 
+1. **Network Selection**: Choose between Mainnet or Testnet
+2. **Pair Selection**: Select specific swap pairs for the chosen network
+
+#### Mainnet Options
 - **ETH → USDC (Ethereum)**: Native ETH to USDC on Ethereum mainnet
 - **USDC → ETH (Ethereum)**: USDC to native ETH on Ethereum mainnet  
 - **USDC → USDT (Ethereum)**: USDC to USDT on Ethereum mainnet
 - **USDC → ETH (Base)**: USDC to native ETH on Base mainnet
 
+#### Testnet Options
+- **ETH → USDC (Sepolia)**: Native ETH to USDC on Ethereum Sepolia testnet
+- **USDC → ETH (Sepolia)**: USDC to native ETH on Ethereum Sepolia testnet
+- **ETH → USDC (Base Sepolia)**: Native ETH to USDC on Base Sepolia testnet
+- **USDC → ETH (Base Sepolia)**: USDC to native ETH on Base Sepolia testnet
+- **ETH → USDC (Optimism Sepolia)**: Native ETH to USDC on Optimism Sepolia testnet
+- **ETH → USDC (Arbitrum Sepolia)**: Native ETH to USDC on Arbitrum Sepolia testnet
+
 When you select a pair:
 1. Bot calls GUD Trading Engine `/order/estimate` API
 2. Returns estimated destination amount, minimum amount, fees, and trade ID
-3. Shows chain information and slippage settings
+3. Shows chain information, network type, and slippage settings
+4. Provides navigation back to network selection
 
 ## Supported Chains
 
+### Mainnet Networks
 | Chain | ID | Status |
 |-------|----|---------|
 | Ethereum Mainnet | 1 | ✅ |
@@ -77,10 +93,22 @@ When you select a pair:
 | Optimism | 10 | ✅ |
 | Arbitrum | 42161 | ✅ |
 | Zircuit | 48900 | ✅ |
+
+### Testnet Networks
+| Chain | ID | Status |
+|-------|----|---------|
 | Sepolia | 11155111 | ✅ |
 | Base Sepolia | 84532 | ✅ |
 | Optimism Sepolia | 11155420 | ✅ |
 | Arbitrum Sepolia | 421614 | ✅ |
+
+## Testnet Benefits
+
+- **Safe Testing**: Test swap functionality without real funds
+- **Development**: Perfect for developers testing integrations
+- **User Experience**: Users can learn the bot interface safely
+- **Cost Effective**: No gas fees on testnet transactions
+- **Multiple Networks**: Test across different L2 solutions
 
 ## API Integration
 
@@ -117,6 +145,7 @@ const TOKENS = {
     address: '0x...',
     decimals: 18,
     chainId: config.chains.mainnet,
+    network: 'mainnet' // or 'testnet'
   },
   // ... existing tokens
 };
@@ -136,16 +165,17 @@ chains: {
 - **Estimate handling**: `src/services/gudEngine.js`
 - **EVM operations**: `src/services/zircuit.js`
 - **Bot commands**: `src/commands/swap.js`
+- **UI flow**: Update keyboard builders and callback handlers
 
 ## Project Structure
 
 ```
 src/
-├── bot.js              # Main bot entry point
+├── bot.js              # Main bot entry point with callback routing
 ├── config.js           # Configuration and environment variables
 ├── logger.js           # Console logging utility
 ├── commands/
-│   └── swap.js        # Swap command handlers
+│   └── swap.js        # Swap command handlers with network selection
 └── services/
     ├── gudEngine.js    # GUD Trading Engine API client
     └── zircuit.js      # EVM provider and wallet management
@@ -156,8 +186,15 @@ src/
 ### Adding New Features
 1. Create new command files in `src/commands/`
 2. Add new services in `src/services/`
-3. Update `src/bot.js` to register new commands
-4. Test with different chain configurations
+3. Update `src/bot.js` to register new commands and callbacks
+4. Test with different chain and network configurations
+
+### UI Flow
+The bot now uses a hierarchical callback system:
+- `network:mainnet` → Shows mainnet pairs
+- `network:testnet` → Shows testnet pairs  
+- `pair:TOKEN1-TOKEN2-CHAIN` → Executes swap estimate
+- `network:back` → Returns to network selection
 
 ### Error Handling
 The bot includes comprehensive error handling for:
@@ -165,6 +202,7 @@ The bot includes comprehensive error handling for:
 - Invalid private keys
 - Network failures
 - API rate limits
+- Callback routing errors
 
 ### Logging
 All operations are logged with timestamps:
@@ -191,6 +229,11 @@ All operations are logged with timestamps:
 - Verify the chain ID is in the supported list
 - Check chain configuration in `config.js`
 
+**Callback not working**
+- Ensure the bot is handling the correct callback types
+- Check callback data format in the swap command
+- Verify the bot has proper permissions
+
 ## Dependencies
 
 - **telegraf**: Telegram Bot Framework
@@ -207,12 +250,14 @@ MIT License - see LICENSE file for details.
 For issues and questions:
 1. Check the troubleshooting section above
 2. Review the GUD Trading Engine API documentation
-3. Open an issue on GitHub
+3. Test on testnet networks first
+4. Open an issue on GitHub
 
 ## Contributing
 
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request 
+4. Test on both mainnet and testnet
+5. Add tests if applicable
+6. Submit a pull request 
