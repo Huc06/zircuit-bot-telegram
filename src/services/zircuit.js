@@ -2,8 +2,8 @@ const { ethers } = require('ethers');
 const config = require('../config');
 const log = require('../logger');
 
-let provider;
-let wallet;
+let providers = {};
+let wallets = {};
 
 function isValidPrivateKeyHex(pk) {
   if (!pk) return false;
@@ -11,40 +11,74 @@ function isValidPrivateKeyHex(pk) {
   return /^[0-9a-fA-F]{64}$/.test(hex);
 }
 
+function getChainRpcUrl(chainId) {
+  // For now, use the same RPC_URL for all chains
+  // In production, you might want to have different RPC URLs for different chains
+  return config.rpcUrl;
+}
+
 function initEvm() {
-  provider = new ethers.JsonRpcProvider(config.rpcUrl);
   const pk = (config.relayerPrivateKey || '').trim();
 
   if (isValidPrivateKeyHex(pk)) {
     try {
-      wallet = new ethers.Wallet(pk, provider);
-      log.info('Relayer wallet initialized');
+      // Initialize providers and wallets for all supported chains
+      Object.entries(config.chains).forEach(([chainName, chainId]) => {
+        const rpcUrl = getChainRpcUrl(chainId);
+        providers[chainId] = new ethers.JsonRpcProvider(rpcUrl);
+        
+        try {
+          wallets[chainId] = new ethers.Wallet(pk, providers[chainId]);
+          log.info(`Relayer wallet initialized for ${chainName} (${chainId})`);
+        } catch (e) {
+          wallets[chainId] = null;
+          log.warn(`Failed to initialize relayer wallet for ${chainName} (${chainId}):`, e.message);
+        }
+      });
+      
+      log.info('EVM providers and wallets initialized for all supported chains');
     } catch (e) {
-      wallet = null;
-      log.warn('Failed to initialize relayer wallet; starting in read-only mode:', e.message);
+      log.error('Failed to initialize EVM infrastructure:', e.message);
+      throw e;
     }
   } else if (pk.length > 0) {
-    wallet = null;
     log.warn('RELAYER_PRIVATE_KEY provided but invalid. Expected 0x + 64 hex chars. Running in read-only mode.');
   } else {
-    wallet = null;
     log.info('No relayer private key provided; running in read-only mode');
   }
-  return { provider, wallet };
+
+  return { providers, wallets };
 }
 
-async function sendTx(txRequest) {
+async function sendTx(txRequest, chainId = 1) {
+  const wallet = wallets[chainId];
   if (!wallet) {
-    throw new Error('Relayer wallet not configured. Set a valid RELAYER_PRIVATE_KEY to enable sendTx');
+    throw new Error(`Relayer wallet not configured for chain ${chainId}. Set a valid RELAYER_PRIVATE_KEY to enable sendTx`);
   }
+  
   const tx = await wallet.sendTransaction(txRequest);
-  log.info('Submitted tx', tx.hash);
+  log.info(`Submitted tx on chain ${chainId}:`, tx.hash);
   return tx;
+}
+
+function getProvider(chainId = 1) {
+  return providers[chainId] || null;
+}
+
+function getWallet(chainId = 1) {
+  return wallets[chainId] || null;
+}
+
+function isChainSupported(chainId) {
+  return Object.values(config.chains).includes(chainId);
 }
 
 module.exports = {
   initEvm,
   sendTx,
-  get provider() { return provider; },
-  get wallet() { return wallet; },
+  getProvider,
+  getWallet,
+  isChainSupported,
+  get providers() { return providers; },
+  get wallets() { return wallets; },
 }; 

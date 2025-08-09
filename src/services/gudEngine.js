@@ -33,29 +33,39 @@ const classifyHttpError = (status) => {
 
 async function getEstimate(params) {
   const {
+    srcChainId = 1, // Default to Ethereum mainnet
     srcToken,
+    srcAmountWei,
     destToken,
-    amount,
-    chainId = 1,
-    slippageBps = 50,
-    recipient,
+    destChainId,
+    slippageBps = 100,
+    userAccount,
+    destReceiver,
   } = params;
 
   try {
-    const { data } = await http.post('/order/estimate', {
+    const requestBody = {
+      srcChainId,
       srcToken,
+      srcAmountWei,
       destToken,
-      amount,
-      chainId,
+      destChainId: destChainId || srcChainId, // Same chain if not specified
       slippageBps,
-      recipient,
-    });
+      ...(userAccount && { userAccount }),
+      ...(destReceiver && { destReceiver }),
+    };
+
+    log.info('GUD estimate request:', requestBody);
+
+    const { data } = await http.post('/order/estimate', requestBody);
+
+    log.info('GUD estimate response:', data);
 
     return data;
   } catch (err) {
     if (err.response) {
       const { status, data } = err.response;
-      const message = (data && (data.message || data.error)) || classifyHttpError(status);
+      const message = (data && (data.error || data.message)) || classifyHttpError(status);
       const e = new Error(message);
       e.status = status;
       e.details = data;
@@ -66,6 +76,48 @@ async function getEstimate(params) {
   }
 }
 
+async function getTradeStatus(txHash) {
+  try {
+    const { data } = await http.get(`/order/status?txHash=${txHash}`);
+    return data;
+  } catch (err) {
+    if (err.response) {
+      const { status, data } = err.response;
+      const message = (data && (data.error || data.message)) || classifyHttpError(status);
+      const e = new Error(message);
+      e.status = status;
+      e.details = data;
+      throw e;
+    }
+    log.error('GUD trade status request failed:', err.message);
+    throw new Error('Network error contacting GUD Engine');
+  }
+}
+
+async function waitUntilTradeIsCompleted(txHash, maxWaitTime = 60000) {
+  const startTime = Date.now();
+  
+  while (Date.now() - startTime < maxWaitTime) {
+    try {
+      const response = await getTradeStatus(txHash);
+      
+      if (['SUCCESS', 'FAILED', 'REFUNDED', 'UNKNOWN'].includes(response.status)) {
+        return response;
+      }
+      
+      // Wait 1 second before next check
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    } catch (error) {
+      log.warn('Error checking trade status:', error.message);
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+  }
+  
+  throw new Error('Trade status check timeout');
+}
+
 module.exports = {
   getEstimate,
+  getTradeStatus,
+  waitUntilTradeIsCompleted,
 }; 
