@@ -205,7 +205,8 @@ async function handlePairCallback(ctx) {
       destToken: dst.address,
       destChainId: dst.chainId,
       slippageBps: 100,
-      // userAccount and destReceiver are optional and not needed for estimates
+      userAccount: '0x0000000000000000000000000000000000000000', // Default address for estimates
+      destReceiver: '0x0000000000000000000000000000000000000000', // Default address for estimates
     });
 
     // Extract data from the new API response structure
