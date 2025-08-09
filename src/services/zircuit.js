@@ -5,80 +5,71 @@ const log = require('../logger');
 let providers = {};
 let wallets = {};
 
-function isValidPrivateKeyHex(pk) {
-  if (!pk) return false;
-  const hex = pk.startsWith('0x') ? pk.slice(2) : pk;
-  return /^[0-9a-fA-F]{64}$/.test(hex);
-}
-
-function getChainRpcUrl(chainId) {
-  // For now, use the same RPC_URL for all chains
-  // In production, you might want to have different RPC URLs for different chains
-  return config.rpcUrl;
+function isValidPrivateKeyHex(privateKey) {
+  if (!privateKey || typeof privateKey !== 'string') return false;
+  if (!privateKey.startsWith('0x')) return false;
+  if (privateKey.length !== 66) return false; // 0x + 64 hex chars
+  return /^0x[0-9a-fA-F]{64}$/.test(privateKey);
 }
 
 function initEvm() {
-  const pk = (config.relayerPrivateKey || '').trim();
+  try {
+    // Initialize providers for mainnet chains only
+    const mainnetChains = [
+      { id: config.chains.mainnet, name: 'mainnet' },
+      { id: config.chains.base, name: 'base' },
+      { id: config.chains.optimism, name: 'optimism' },
+      { id: config.chains.arbitrum, name: 'arbitrum' },
+      { id: config.chains.zircuit, name: 'zircuit' },
+    ];
 
-  if (isValidPrivateKeyHex(pk)) {
-    try {
-      // Initialize providers and wallets for all supported chains
-      Object.entries(config.chains).forEach(([chainName, chainId]) => {
-        const rpcUrl = getChainRpcUrl(chainId);
-        providers[chainId] = new ethers.JsonRpcProvider(rpcUrl);
-        
-        try {
-          wallets[chainId] = new ethers.Wallet(pk, providers[chainId]);
-          log.info(`Relayer wallet initialized for ${chainName} (${chainId})`);
-        } catch (e) {
-          wallets[chainId] = null;
-          log.warn(`Failed to initialize relayer wallet for ${chainName} (${chainId}):`, e.message);
-        }
-      });
+    mainnetChains.forEach(chain => {
+      // Create provider
+      providers[chain.id] = new ethers.JsonRpcProvider(config.rpcUrl, chain.id);
       
-      log.info('EVM providers and wallets initialized for all supported chains');
-    } catch (e) {
-      log.error('Failed to initialize EVM infrastructure:', e.message);
-      throw e;
-    }
-  } else if (pk.length > 0) {
-    log.warn('RELAYER_PRIVATE_KEY provided but invalid. Expected 0x + 64 hex chars. Running in read-only mode.');
-  } else {
-    log.info('No relayer private key provided; running in read-only mode');
-  }
+      // Create wallet if private key is provided
+      if (config.relayerPrivateKey && isValidPrivateKeyHex(config.relayerPrivateKey)) {
+        wallets[chain.id] = new ethers.Wallet(config.relayerPrivateKey, providers[chain.id]);
+        log.info(`Relayer wallet initialized for ${chain.name} (${chain.id})`);
+      } else {
+        log.warn(`Relayer wallet not configured for ${chain.name} (${chain.id})`);
+      }
+    });
 
-  return { providers, wallets };
+    log.info('EVM providers and wallets initialized for mainnet chains');
+  } catch (error) {
+    log.error('Failed to initialize EVM:', error);
+    throw error;
+  }
 }
 
-async function sendTx(txRequest, chainId = 1) {
-  const wallet = wallets[chainId];
+function getProvider(chainId) {
+  return providers[chainId];
+}
+
+function getWallet(chainId) {
+  return wallets[chainId];
+}
+
+async function sendTx(chainId, txData) {
+  const wallet = getWallet(chainId);
   if (!wallet) {
-    throw new Error(`Relayer wallet not configured for chain ${chainId}. Set a valid RELAYER_PRIVATE_KEY to enable sendTx`);
+    throw new Error('Relayer wallet not configured for this chain');
   }
-  
-  const tx = await wallet.sendTransaction(txRequest);
-  log.info(`Submitted tx on chain ${chainId}:`, tx.hash);
-  return tx;
-}
 
-function getProvider(chainId = 1) {
-  return providers[chainId] || null;
-}
-
-function getWallet(chainId = 1) {
-  return wallets[chainId] || null;
-}
-
-function isChainSupported(chainId) {
-  return Object.values(config.chains).includes(chainId);
+  try {
+    const tx = await wallet.sendTransaction(txData);
+    log.info(`Transaction sent on chain ${chainId}:`, tx.hash);
+    return tx;
+  } catch (error) {
+    log.error(`Failed to send transaction on chain ${chainId}:`, error);
+    throw error;
+  }
 }
 
 module.exports = {
   initEvm,
-  sendTx,
   getProvider,
   getWallet,
-  isChainSupported,
-  get providers() { return providers; },
-  get wallets() { return wallets; },
+  sendTx,
 }; 

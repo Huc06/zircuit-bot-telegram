@@ -3,7 +3,7 @@ const { message } = require('telegraf/filters');
 const config = require('./config');
 const log = require('./logger');
 const zircuit = require('./services/zircuit');
-const { handleSwapCommand, handleNetworkCallback, handlePairCallback } = require('./commands/swap');
+const { handleSwapCommand, handlePairCallback, handleSwapBackCallback } = require('./commands/swap');
 
 // Init EVM provider and optional relayer wallet
 zircuit.initEvm();
@@ -11,20 +11,20 @@ zircuit.initEvm();
 // Init bot
 const bot = new Telegraf(config.botToken);
 
-bot.start((ctx) => ctx.reply('Xin chào! Gõ /swap để thử ước tính hoán đổi trên Mainnet hoặc Testnet.'));
+bot.start((ctx) => ctx.reply('Xin chào! Gõ /swap để thử ước tính hoán đổi trên Mainnet.'));
 
 bot.command('swap', handleSwapCommand);
 
-// Callback handler for network selection
+// Callback handler for swap selections
 bot.on('callback_query', (ctx) => {
   const data = ctx.callbackQuery.data;
-  
-  if (data.startsWith('network:')) {
-    return handleNetworkCallback(ctx);
-  } else if (data.startsWith('pair:')) {
+
+  if (data.startsWith('pair:')) {
     return handlePairCallback(ctx);
+  } else if (data === 'swap:back') {
+    return handleSwapBackCallback(ctx);
   }
-  
+
   // Handle other callbacks if needed
   return ctx.answerCbQuery('Unknown callback');
 });
@@ -32,7 +32,7 @@ bot.on('callback_query', (ctx) => {
 // Optional echo for text messages
 bot.on(message('text'), (ctx) => {
   if (!ctx.message.text.startsWith('/')) {
-    return ctx.reply('Gõ /swap để chọn mạng và cặp hoán đổi.');
+    return ctx.reply('Gõ /swap để chọn cặp hoán đổi trên Mainnet.');
   }
 });
 
@@ -41,7 +41,7 @@ bot.catch((err, ctx) => {
 });
 
 bot.launch().then(() => {
-  log.info('Bot launched with testnet support');
+  log.info('Bot launched with mainnet-only support');
 }).catch((e) => {
   log.error('Failed to launch bot:', e);
   process.exit(1);
